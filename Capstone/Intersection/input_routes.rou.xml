@@ -1,0 +1,33 @@
+<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
+    <vType id="SUMO_DEFAULT_TYPE" accel="0.8" decel="4.5" sigma="0" length="5" minGap="2" maxSpeed="70"/>
+   <vType id="emergency_vehicle" accel="3.0" decel="6.0" sigma="0" length="6" minGap="2" maxSpeed="100" color="1,0,0"/>
+
+   <route id="always_right" edges="1i 4o 4i 2o 2i 3o 3i 1o 1i"/>
+   <flow id="always_right" type="SUMO_DEFAULT_TYPE" route="always_right" begin="0" end="900" period="60"/>
+
+   <route id="always_left" edges="3i 2o 2i 4o 4i 1o 1i 3o 3i"/>
+   <flow id="always_left" type="SUMO_DEFAULT_TYPE" route="always_left" begin="0" end="900" period="60"/>
+
+   <route id="horizontal" edges="2i 1o 1i 2o 2i"/>
+   <flow id="horizontal" type="SUMO_DEFAULT_TYPE" route="horizontal" begin="0" end="900" period="30"/>
+
+   <route id="vertical" edges="3i 4o 4i 3o 3i"/>
+   <flow id="vertical" type="SUMO_DEFAULT_TYPE" route="vertical" begin="0" end="900" period="30"/>
+
+   <!-- <route id="emergency_route" edges="4i 3o"/>
+   <flow id="emergency_flow" type="emergency_vehicle" route="emergency_route" begin="0" end="900" period="30"/> -->
+
+    <route id="emergency_route1" edges="3i 2o 2i 4o 4i 1o 1i 3o 3i"/>
+   <flow id="emergency_flow1" type="emergency_vehicle" route="emergency_route1" begin="0" end="900" period="120"/>
+   
+   
+   <!-- Define routes for multiple cars -->
+   <route id="car_route_1" edges="1i 2o"/>
+   <flow id="car_flow_1" type="SUMO_DEFAULT_TYPE" route="car_route_1" begin="0" end="900" period="60"/>
+
+   <route id="car_route_2" edges="2i 3o"/>
+   <flow id="car_flow_2" type="SUMO_DEFAULT_TYPE" route="car_route_2" begin="0" end="900" period="60"/>
+
+   <!-- Add more car routes and flows as needed -->
+
+</routes>
