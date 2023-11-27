@@ -38,6 +38,7 @@ for i in range(200):
         lane = traci.vehicle.getLaneID(id)
         neigh = traci.vehicle.getMaxSpeed(id)
         l =traci.vehicle.getAllowedSpeed(id)
+        print(id,speed,position,lane,neigh,l)
         # add a node to the graph for each vehicle
         G.add_node(id, pos=position, speed=[speed,neigh,l], lane=lane)
 
