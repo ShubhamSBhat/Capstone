@@ -1,32 +1,28 @@
-from collections import defaultdict
-from threading import Thread
-from time import sleep
 import numpy as np
 import traci
 import csv
-import pandas as pd
 import networkx as nx
 import torch
 import os
 import sys
-
-
-
-import matplotlib.pyplot as plt
 from sklearn.preprocessing import LabelEncoder
-
 sys.path.append("..")
 from GraphSage.link_prediction import GraphSAGENet
 import torch
-import torch.nn as nn
-import torch.optim as optim
-from torch_geometric.data import Data, DataLoader
-
+from torch_geometric.data import Data
 EV = 1
 AV = 2
 HV = 3
 
-lanes = [":J1_0_0",":J1_1_0",":J1_1_1","E0_0","E0_1","E4_0","E4_1","E7_0"]
+lanes = []
+csv_file_path = "lane_ids.csv"
+with open(csv_file_path, 'r', newline='') as csv_file:
+        csv_reader = csv.reader(csv_file)
+        
+        for row in csv_reader:
+            lanes.append(row)
+        
+        lanes = lanes[1]
 lane_encoder = LabelEncoder()
 encoded_lanes = lane_encoder.fit_transform(lanes)
 lanes_mapping = {}
@@ -34,7 +30,7 @@ for i,lane in enumerate(lanes):
     lanes_mapping[lane] = encoded_lanes[i]
 
 # Instantiate the model
-input_dim = 2  # Assuming each node has a feature vector of size 3
+input_dim = 5  # Assuming each node has a feature vector of size 3
 hidden_dim = 10
 output_dim = 5
 model = GraphSAGENet(input_dim, hidden_dim, output_dim)
@@ -49,7 +45,7 @@ def calculate_score( vehicle_type, speed, x,y, lane, neighbors):
     # Consider vehicle type: Give a higher score to EVs
     # Justification: Encouraging the adoption of EVs by providing them with preferential treatment in terms of lane changes and speed adjustments can promote a more sustainable and environmentally friendly transportation system.
 
-    if vehicle_type == "EV":
+    if vehicle_type == EV:
         score += 0.2
         print("Vehicle type: EV (score increased by 0.2)")
 
@@ -83,7 +79,7 @@ def calculate_score( vehicle_type, speed, x,y, lane, neighbors):
 def custom_action_policy(graph, vehicle_data):
     # print("in custom action")
     for idx, id in enumerate(vehicle_data.keys()):
-        vehicle_type = vehicle_type_mapping[vehicle_id]
+        vehicle_type = vehicle_type_mapping[traci.vehicle.getVehicleClass(vehicle_id)]
         speed = vehicle_data[vehicle_id]['speed']
         x = vehicle_data[vehicle_id]['x']
         y = vehicle_data[vehicle_id]['y']
@@ -104,7 +100,7 @@ def custom_action_policy(graph, vehicle_data):
             adjust_speed(graph, id, new_speed)
 
         # Implement lane-changing behavior based on graph information
-        if vehicle_type == "EV":
+        if vehicle_type == EV:
             if has_AV_in_same_lane_in_graph(graph, id, lane):
                 # Initiate lane change if there is an AV in the same lane
                 change_lane_to_outer_lane(graph, id)
@@ -223,7 +219,7 @@ def transform_data(vehicle_data):
     vehicle_features = []
     for veh_id, features in vehicle_data.items():
         # print(veh_id,features)
-        feature_list = [vehicle_ids_mapping[veh_id],features['x'],features['y']]
+        feature_list = [vehicle_ids_mapping[veh_id],features['x'],features['y'],features['lane'],features['speed'],features['acceleration']]
         vehicle_features.append(feature_list)
 
     vehicle_features.sort(key = lambda x:x[0])
@@ -236,7 +232,7 @@ def create_traffic_graph(vehicle_data, threshold_distance):
     
     # Add nodes for each vehicle
     for vehicle_id in vehicle_data:
-        vehicle_type = vehicle_type_mapping[vehicle_id]
+        vehicle_type = vehicle_type_mapping[traci.vehicle.getVehicleClass(vehicle_id)]
         speed = vehicle_data[vehicle_id]['speed']
         x = vehicle_data[vehicle_id]['x']
         y = vehicle_data[vehicle_id]['y']
@@ -312,32 +308,31 @@ sumo_config_path = os.path.join(cur_dir,"osm.sumocfg")
 
 # start the TraCI connection
 traci.start(["sumo", "-c", sumo_config_path])
-
+vehicle_type_mapping = {
+        "emergency":EV,
+        "autonomous":AV,
+        "passenger":HV,
+        "ignoring":4
+    }
 # Simulate for a certain number of steps
 for i in range(50):
     traci.simulationStep()
 # Create a mapping to classify vehicles as AV or HV
-    vehicle_type_mapping = {}
+    
 
 # Get a list of all the vehicles in the simulation
     vehicle_ids = traci.vehicle.getIDList()
 
-    for id in vehicle_ids:
-        if id.startswith("route0") or id.startswith("route1"):
-            vehicle_type_mapping[id] = EV
-        elif id.startswith("route4"):
-            vehicle_type_mapping[id] = AV
-        else:
-            vehicle_type_mapping[id] = HV
-    
     vehicle_data = {}
 
     for vehicle_id in vehicle_ids:
         # Extract relevant attributes
-        vehicle_type = vehicle_type_mapping[vehicle_id]
+        vehicle_type = vehicle_type_mapping[traci.vehicle.getVehicleClass(vehicle_id)]
+        if vehicle_type == 4:
+            continue
         speed = int(traci.vehicle.getSpeed(vehicle_id))
         x,y = traci.vehicle.getPosition(vehicle_id)
-        lane = traci.vehicle.getLaneID(vehicle_id)
+        lane = lanes_mapping[traci.vehicle.getLaneID(vehicle_id)]
         acceleration = traci.vehicle.getAcceleration(vehicle_id)
         neighbor = traci.vehicle.getLeader(vehicle_id)
         if neighbor is not None:
