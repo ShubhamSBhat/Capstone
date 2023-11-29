@@ -20,7 +20,16 @@ vehicle_dataset,edge_list = None,None
 target_y = None
 edge_count = 0
 
-lanes = [":J1_0_0",":J1_1_0",":J1_1_1","E0_0","E0_1","E4_0","E4_1","E7_0"]
+lanes = []
+csv_file_path = "lane_ids.csv"
+with open(csv_file_path, 'r', newline='') as csv_file:
+        csv_reader = csv.reader(csv_file)
+        
+        for row in csv_reader:
+            lanes.append(row)
+        
+        lanes = lanes[1]
+
 lane_encoder = LabelEncoder()
 encoded_lanes = lane_encoder.fit_transform(lanes)
 lanes_mapping = {}
@@ -125,7 +134,7 @@ for i in range(30):
         # vehicle_type = vehicle_type_mapping[vehicle_id]
         speed = int(traci.vehicle.getSpeed(vehicle_id))
         x,y = traci.vehicle.getPosition(vehicle_id)
-        # lane = lanes_mapping[traci.vehicle.getLaneID(vehicle_id)]
+        lane = lanes_mapping[traci.vehicle.getLaneID(vehicle_id)]
         acceleration = traci.vehicle.getAcceleration(vehicle_id)
         neighbor = traci.vehicle.getLeader(vehicle_id)
         if neighbor is not None:
@@ -136,7 +145,7 @@ for i in range(30):
             'speed': speed,
             'x':x,
             'y':y,
-            # 'lane': lane,
+            'lane': lane,
             'acceleration': acceleration
         }
         
@@ -167,7 +176,7 @@ vehicle_features = []
 
 for veh_id, features in vehicle_dataset.items():
     # print(veh_id,features)
-    feature_list = [vehicle_ids_mapping[veh_id],features['x'],features['y']]
+    feature_list = [vehicle_ids_mapping[veh_id],features['x'],features['y'],features['lane'],features['speed'],features['acceleration']]
     vehicle_features.append(feature_list)
 
 vehicle_features.sort(key = lambda x:x[0])

@@ -64,7 +64,7 @@ def custom_collate(batch):
                 edge_index=torch.cat([item.edge_index for item in batch], dim=1),
                 y=torch.cat([item.y for item in batch], dim=0))
 
-if __name__ == "_main_":
+if __name__ == "__main__":
     csv_file_path = 'edge_list.csv'
     edge_list = []
 
@@ -99,7 +99,7 @@ if __name__ == "_main_":
 
     x = torch.tensor(vehicle_features, dtype=torch.float)
     # Instantiate the model
-    input_dim = 2  # Assuming each node has a feature vector of size 3
+    input_dim = 5  # Assuming each node has a feature vector of size 3
     hidden_dim = 10
     output_dim = 5
     model = GraphSAGENet(input_dim, hidden_dim, output_dim)

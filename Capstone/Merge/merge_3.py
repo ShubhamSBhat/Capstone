@@ -34,7 +34,7 @@ for i,lane in enumerate(lanes):
     lanes_mapping[lane] = encoded_lanes[i]
 
 # Instantiate the model
-input_dim = 2  # Assuming each node has a feature vector of size 3
+input_dim = 5  # Assuming each node has a feature vector of size 3
 hidden_dim = 10
 output_dim = 5
 model = GraphSAGENet(input_dim, hidden_dim, output_dim)
@@ -50,7 +50,7 @@ def calculate_score( vehicle_type, speed, x,y, lane, neighbors):
     # Justification: Encouraging the adoption of EVs by providing them with preferential treatment in terms of lane changes and speed adjustments can promote a more sustainable and environmentally friendly transportation system.
 
     if vehicle_type == "EV":
-        score += 0.2
+        score += 0.5
         print("Vehicle type: EV (score increased by 0.2)")
 
     # Consider proximity to other vehicles: Penalize vehicles that are too close
@@ -74,7 +74,7 @@ def calculate_score( vehicle_type, speed, x,y, lane, neighbors):
     # Consider lane position: Give a higher score to vehicles in the middle lane
     # Justification: Vehicles in the middle lane are generally less likely to encounter congestion or lane changes, making it a more efficient and predictable route. Giving a higher score to vehicles in the middle lane encourages them to maintain their position, promoting smoother traffic flow.
 
-    if lane == "center":
+    if lane == 1:
         score += 0.1
         print("Lane position: Center (score increased by 0.1)")
 
@@ -104,13 +104,13 @@ def custom_action_policy(graph, vehicle_data):
             adjust_speed(graph, id, new_speed)
 
         # Implement lane-changing behavior based on graph information
-        if vehicle_type == "EV":
+        if vehicle_type == 1:
             if has_AV_in_same_lane_in_graph(graph, id, lane):
                 # Initiate lane change if there is an AV in the same lane
                 change_lane_to_outer_lane(graph, id)
             else:
                 # Check for potential lane change opportunities
-                if lane != "center":
+                if lane != 1:
                     if can_change_lane_to_center_in_graph(graph, id, lane):
                         # Change lane to the center if possible
                         change_lane_to_center_lane(graph, id)
@@ -140,13 +140,13 @@ def get_adjacent_lanes(graph, vehicle_id, lane):
     adjacent_lanes = []
 
     # Determine the adjacent lanes based on the current lane
-    if lane == "left":
-        adjacent_lanes.append("center")
-    elif lane == "center":
-        adjacent_lanes.append("left")
-        adjacent_lanes.append("right")
-    elif lane == "right":
-        adjacent_lanes.append("center")
+    if lane == 2:
+        adjacent_lanes.append(1)
+    elif lane == 1:
+        adjacent_lanes.append(2)
+        adjacent_lanes.append(3)
+    elif lane == 3:
+        adjacent_lanes.append(1)
 
     # Check if there are any vehicles in the adjacent lanes
     for adjacent_lane in adjacent_lanes:
@@ -160,7 +160,7 @@ def get_adjacent_lanes(graph, vehicle_id, lane):
 
 def change_lane_to_center_lane(graph, vehicle_id):
     # Initiate lane change to the center lane
-    traci.vehicle.changeLaneRelative(vehicle_id, 1)
+    traci.vehicle.changeLaneRelative(vehicle_id, 1,1)
 
     # Update the lane attribute in the graph
     new_lane = traci.vehicle.getLaneID(vehicle_id)
@@ -168,7 +168,7 @@ def change_lane_to_center_lane(graph, vehicle_id):
 
 def change_lane_to_outer_lane(graph, vehicle_id):
     # Initiate lane change to an outer lane
-    traci.vehicle.changeLaneRelative(vehicle_id, -1)
+    traci.vehicle.changeLaneRelative(vehicle_id, 2,1)
 
     # Update the lane attribute in the graph
     new_lane = traci.vehicle.getLaneID(vehicle_id)
@@ -178,7 +178,7 @@ def can_change_lane_to_center_in_graph(graph, vehicle_id, lane):
     # Check if there are any vehicles in the adjacent lanes
     adjacent_lanes = get_adjacent_lanes(graph, vehicle_id, lane)
     for adjacent_lane in adjacent_lanes:
-        if lane != "center" and adjacent_lane == "center":
+        if lane != 1 and adjacent_lane == 1:
             return True
 
     return False
@@ -186,7 +186,7 @@ def can_change_lane_to_center_in_graph(graph, vehicle_id, lane):
 def can_change_lane_to_outer_in_graph(graph, vehicle_id, lane):
     # Check if there are any vehicles in the adjacent lanes
     adjacent_lanes = get_adjacent_lanes(graph, vehicle_id, lane)
-    if len(adjacent_lanes) == 1 and lane != "center":
+    if len(adjacent_lanes) == 1 and lane != 1:
         return True
 
     return False
@@ -198,7 +198,7 @@ def has_AV_in_same_lane_in_graph(graph, vehicle_id, lane):
         neighbor_type = neighbor_attributes['vehicle_type']
         neighbor_lane = neighbor_attributes['lane']
 
-        if neighbor_type == "AV" and neighbor_lane == lane:
+        if neighbor_type == 2 and neighbor_lane == lane:
             return True
 
     return False
@@ -223,7 +223,7 @@ def transform_data(vehicle_data):
     vehicle_features = []
     for veh_id, features in vehicle_data.items():
         # print(veh_id,features)
-        feature_list = [vehicle_ids_mapping[veh_id],features['x'],features['y']]
+        feature_list = [vehicle_ids_mapping[veh_id],features['x'],features['y'],features['lane'],features['speed'],features['acceleration']]
         vehicle_features.append(feature_list)
 
     vehicle_features.sort(key = lambda x:x[0])
@@ -309,12 +309,18 @@ def create_traffic_graph(vehicle_data, threshold_distance):
 # start the TraCI connection
 cur_dir = os.getcwd()
 sumo_config_path = os.path.join(cur_dir,"merge.sumocfg")
-
+avg_waiting_time=0
+avg_depart_delay=0
+overall_waiting_time=0
+avg_speed=0
+count=0
+count_2=0
 # start the TraCI connection
 traci.start(["sumo", "-c", sumo_config_path])
 
 # Simulate for a certain number of steps
 for i in range(300):
+    # sleep(1)
     traci.simulationStep()
 # Create a mapping to classify vehicles as AV or HV
     vehicle_type_mapping = {}
@@ -352,7 +358,18 @@ for i in range(300):
             'acceleration': acceleration,
             'neighbor':neighbor
         }
-        
+        overall_waiting_time +=  traci.vehicle.getWaitingTime(vehicle_id)
+        avg_speed+= traci.vehicle.getSpeed(vehicle_id)
+        print(avg_speed)
+        count_2+=1
+        if(vehicle_type==1):
+            count+=1
+            print("In here",count)
+            waiting_time =traci.vehicle.getWaitingTime(vehicle_id)
+            depart_delay =traci.vehicle.getDepartDelay(vehicle_id)
+            
+            avg_waiting_time = avg_depart_delay+waiting_time
+            avg_depart_delay= avg_depart_delay+depart_delay
         
         # Define the threshold distance for forming edges between vehicles
         threshold_distance = 1000
@@ -369,7 +386,15 @@ for i in range(300):
             # Handle the case where there are no edges in the graph
             pass
 
- 
+
+avg_depart_delay = avg_depart_delay/count
+avg_waiting_time= avg_waiting_time/count
+overall_waiting_time = overall_waiting_time/count_2
+print("Emergency waiting time:",avg_waiting_time*10)
+print("Emergency depart delay: ",avg_depart_delay)
+print("Emergency average speed: ",avg_speed*10/count)
+print("Overall Waiting time: ",overall_waiting_time/10)
+print(traci.simulation.getCollidingVehiclesNumber())
 # Save the data to a CSV file
 with open('output.csv', mode='w', newline='') as file:
     writer = csv.writer(file)

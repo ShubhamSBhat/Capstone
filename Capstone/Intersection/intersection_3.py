@@ -1,32 +1,22 @@
-from collections import defaultdict
-from threading import Thread
-from time import sleep
 import numpy as np
 import traci
 import csv
-import pandas as pd
 import networkx as nx
 import torch
 import os
 import sys
-
-
-
-import matplotlib.pyplot as plt
 from sklearn.preprocessing import LabelEncoder
 
 sys.path.append("..")
 from GraphSage.link_prediction import GraphSAGENet
 import torch
-import torch.nn as nn
-import torch.optim as optim
-from torch_geometric.data import Data, DataLoader
+from torch_geometric.data import Data
 
 EV = 1
 AV = 2
 HV = 3
 
-lanes = [":J1_0_0",":J1_1_0",":J1_1_1","E0_0","E0_1","E4_0","E4_1","E7_0"]
+lanes = [":0_0_0",":0_1_0",":0_2_0",":0_3_0",":0_16_0",":0_17_0",":0_4_0",":0_5_0",":0_6_0",":0_7_0",":0_8_0",":0_9_0",":0_10_0",":0_11_0",":0_12_0",":0_13_0",":0_14_0",":0_15_0",":0_16_0",":0_17_0",":0_18_0",":0_19_0",":1_0_0",":2_0_0",":3_0_0",":4_0_0","1i_0","1i_1","1o_0","1o_1","2i_0","2i_1","2o_0","2o_1","3i_0","3i_1","3o_0","3o_1","4i_0","4i_1","4o_0","4o_1"]
 lane_encoder = LabelEncoder()
 encoded_lanes = lane_encoder.fit_transform(lanes)
 lanes_mapping = {}
@@ -34,7 +24,7 @@ for i,lane in enumerate(lanes):
     lanes_mapping[lane] = encoded_lanes[i]
 
 # Instantiate the model
-input_dim = 2  # Assuming each node has a feature vector of size 3
+input_dim = 5  # Assuming each node has a feature vector of size 3
 hidden_dim = 10
 output_dim = 5
 model = GraphSAGENet(input_dim, hidden_dim, output_dim)
@@ -223,7 +213,7 @@ def transform_data(vehicle_data):
     vehicle_features = []
     for veh_id, features in vehicle_data.items():
         # print(veh_id,features)
-        feature_list = [vehicle_ids_mapping[veh_id],features['x'],features['y']]
+        feature_list = [vehicle_ids_mapping[veh_id],features['x'],features['y'],features['lane'],features['speed'],features['acceleration']]
         vehicle_features.append(feature_list)
 
     vehicle_features.sort(key = lambda x:x[0])
@@ -309,6 +299,12 @@ def create_traffic_graph(vehicle_data, threshold_distance):
 # start the TraCI connection
 cur_dir = os.getcwd()
 sumo_config_path = os.path.join(cur_dir,"intersection.sumocfg")
+avg_waiting_time=0
+avg_depart_delay=0
+overall_waiting_time=0
+avg_speed=0
+count=0
+count_2=0
 
 # start the TraCI connection
 traci.start(["sumo", "-c", sumo_config_path])
@@ -337,7 +333,7 @@ for i in range(300):
         vehicle_type = vehicle_type_mapping[vehicle_id]
         speed = int(traci.vehicle.getSpeed(vehicle_id))
         x,y = traci.vehicle.getPosition(vehicle_id)
-        lane = traci.vehicle.getLaneID(vehicle_id)
+        lane = lanes_mapping[traci.vehicle.getLaneID(vehicle_id)]
         acceleration = traci.vehicle.getAcceleration(vehicle_id)
         neighbor = traci.vehicle.getLeader(vehicle_id)
         if neighbor is not None:
@@ -352,8 +348,18 @@ for i in range(300):
             'acceleration': acceleration,
             'neighbor':neighbor
         }
-        
-        
+        overall_waiting_time +=  traci.vehicle.getWaitingTime(vehicle_id)
+        avg_speed+= traci.vehicle.getSpeed(vehicle_id)
+        print(avg_speed)
+        count_2+=1
+        if(vehicle_type==1):
+            count+=1
+            print("In here",count)
+            waiting_time =traci.vehicle.getWaitingTime(vehicle_id)
+            depart_delay =traci.vehicle.getDepartDelay(vehicle_id)
+            
+            avg_waiting_time = avg_depart_delay+waiting_time
+            avg_depart_delay= avg_depart_delay+depart_delay
         # Define the threshold distance for forming edges between vehicles
         threshold_distance = 1000
 
@@ -369,7 +375,13 @@ for i in range(300):
             # Handle the case where there are no edges in the graph
             pass
 
- 
+avg_depart_delay = avg_depart_delay/count
+avg_waiting_time= avg_waiting_time/count
+overall_waiting_time = overall_waiting_time/count_2
+print("Emergency waiting time:",avg_waiting_time*10)
+print("Emergency depart delay: ",avg_depart_delay)
+print("Emergency average speed: ",avg_speed*2/count)
+print("Overall Waiting time: ",overall_waiting_time/10)
 # Save the data to a CSV file
 with open('output.csv', mode='w', newline='') as file:
     writer = csv.writer(file)

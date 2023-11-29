@@ -7,10 +7,10 @@
 
     <!-- Define routes -->
     <route id="route0" edges="E0 E4"/>
-    <flow id="route0" type="emergency_vehicle" route="route0" begin="0" end="200" period="20"/>
+    <flow id="route0" type="emergency_vehicle" route="route0" begin="0" end="200" period="10"/>
 
     <route id="route1" edges="E7 E4"/>
-    <flow id="route1" type="emergency_vehicle" route="route1" begin="0" end="200" period="30"/>
+    <flow id="route1" type="emergency_vehicle" route="route1" begin="0" end="200" period="10"/>
 
     <route id="route4" edges="E7 E4"/>
     <flow id="route4" type="autonomous_vehicle" route="route4" begin="0" end="200" period="20"/>
