@@ -1,0 +1,30 @@
+<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
+
+    <!-- Define vehicle types -->
+    <vType id="SUMO_DEFAULT_TYPE" accel="0.8" decel="4.5" sigma="0" length="5" minGap="2" maxSpeed="70"/>
+    <vType id="emergency_vehicle" accel="3.0" decel="6.0" sigma="0" length="6" minGap="2" maxSpeed="100" color="1,0,0"/>
+    <vType id="autonomous_vehicle" accel="3.0" decel="6.0" sigma="0" length="6" minGap="2" maxSpeed="100" color="0,1,0"/>
+
+    <!-- Define routes -->
+    <route id="route0" edges="E0 E4"/>
+    <flow id="route0" type="emergency_vehicle" route="route0" begin="0" end="200" period="10"/>
+
+    <route id="route1" edges="E7 E4"/>
+    <flow id="route1" type="emergency_vehicle" route="route1" begin="0" end="200" period="10"/>
+
+    <route id="route4" edges="E7 E4"/>
+    <flow id="route4" type="autonomous_vehicle" route="route4" begin="0" end="200" period="20"/>
+
+    <route id="route2" edges=":J1_0 E4"/>
+    <flow id="route2" type="SUMO_DEFAULT_TYPE" route="route2" begin="0" end="200" period="20"/>
+
+    <route id="route3" edges=":J1_1 E4"/>
+     <flow id="route3" type="SUMO_DEFAULT_TYPE" route="route3" begin="0" end="200" period="20"/>
+
+    <!-- Generate vehicles
+    <vehicle id="vehicle0" type="Car" route="route0" depart="0"  departSpeed="max"/>
+    <vehicle id="vehicle1" type="Car" route="route1" depart="1" departSpeed="max"/>
+    <vehicle id="vehicle2" type="Car" route="route2" depart="2" departSpeed="max"/>
+    <vehicle id="vehicle3" type="Car" route="route3" depart="3" departSpeed="max"/> -->
+
+</routes>
